@@ -1,65 +1,241 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Trading Journal - สถิติการเทรด</title>
-    <link rel="stylesheet" href="style.css">
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>XAUUSD Trade Journal</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="style.css"/>
 </head>
 <body>
 
-    <div class="container">
-        <h1>📊 Trading Journal Dashboard</h1>
-        
-        <div class="dashboard">
-            <div class="card">
-                <h3>Win Rate</h3>
-                <p id="win-rate">0%</p>
-            </div>
-            <div class="card win">
-                <h3>Win</h3>
-                <p id="total-win">0</p>
-            </div>
-            <div class="card loss">
-                <h3>Loss</h3>
-                <p id="total-loss">0</p>
-            </div>
-        </div>
-
-        <div class="form-container">
-            <h2>บันทึกการเทรด</h2>
-            <form id="trade-form">
-                <input type="text" id="pair" placeholder="เช่น BTC/USDT" required>
-                <select id="result" required>
-                    <option value="win">ชนะ (Win)</option>
-                    <option value="loss">แพ้ (Loss)</option>
-                </select>
-                <input type="number" id="pnl" placeholder="กำไร/ขาดทุน ($)" step="any" required>
-                <button type="submit">บันทึกข้อมูล</button>
-            </form>
-        </div>
-
-        <div class="history-container">
-            <h2>ประวัติการเทรด</h2>
-            <div style="overflow-x: auto;">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>วัน-เวลา</th>
-                            <th>สินทรัพย์</th>
-                            <th>ผลลัพธ์</th>
-                            <th>P&L</th>
-                            <th>จัดการ</th>
-                        </tr>
-                    </thead>
-                    <tbody id="trade-history">
-                        </tbody>
-                </table>
-            </div>
-        </div>
+  <!-- HEADER -->
+  <header class="site-header">
+    <div class="ticker-tape">
+      <span class="ticker-content">
+        XAU/USD &nbsp;·&nbsp; GOLD TRADE JOURNAL &nbsp;·&nbsp; บันทึกการเทรดทอง &nbsp;·&nbsp; WIN RATE TRACKER &nbsp;·&nbsp; XAU/USD &nbsp;·&nbsp;
+        GOLD TRADE JOURNAL &nbsp;·&nbsp; บันทึกการเทรดทอง &nbsp;·&nbsp; WIN RATE TRACKER &nbsp;·&nbsp;
+      </span>
     </div>
+    <div class="header-main">
+      <div class="logo-block">
+        <span class="logo-icon">⬡</span>
+        <div>
+          <h1 class="logo-title">AURUM<span class="logo-accent">LOG</span></h1>
+          <p class="logo-sub">Gold Trading Statistics · XAU/USD</p>
+        </div>
+      </div>
+      <div class="header-live">
+        <span class="live-dot"></span>
+        <span class="live-text">LIVE STATS</span>
+      </div>
+    </div>
+  </header>
 
-    <script src="app.js"></script>
+  <!-- STAT CARDS -->
+  <section class="stats-section">
+    <div class="container">
+      <div class="stats-grid">
+        <div class="stat-card stat-winrate">
+          <div class="stat-label">Win Rate</div>
+          <div class="stat-value" id="winRate">—</div>
+          <div class="stat-sub">อัตราชนะ</div>
+          <div class="stat-bar"><div class="stat-bar-fill" id="winRateBar" style="width:0%"></div></div>
+        </div>
+        <div class="stat-card stat-wins">
+          <div class="stat-label">Total Wins</div>
+          <div class="stat-value green" id="totalWins">0</div>
+          <div class="stat-sub">จำนวนครั้งที่ชนะ</div>
+          <div class="stat-points"><span id="winPoints">0</span> <span class="pts">pts</span></div>
+        </div>
+        <div class="stat-card stat-losses">
+          <div class="stat-label">Total Losses</div>
+          <div class="stat-value red" id="totalLosses">0</div>
+          <div class="stat-sub">จำนวนครั้งที่แพ้</div>
+          <div class="stat-points"><span id="lossPoints">0</span> <span class="pts">pts</span></div>
+        </div>
+        <div class="stat-card stat-net">
+          <div class="stat-label">Net Points</div>
+          <div class="stat-value" id="netPoints">0</div>
+          <div class="stat-sub">กำไร/ขาดทุนสุทธิ (จุด)</div>
+          <div class="stat-trades">จากการเทรดทั้งหมด <strong id="totalTrades">0</strong> ครั้ง</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- MAIN CONTENT -->
+  <main class="main-content">
+    <div class="container">
+      <div class="layout-two-col">
+
+        <!-- ADD TRADE FORM -->
+        <div class="panel panel-form">
+          <div class="panel-header">
+            <span class="panel-icon">＋</span>
+            <h2 class="panel-title">บันทึกการเทรด</h2>
+          </div>
+          <div class="form-body">
+            <div class="form-row">
+              <label class="form-label">วันที่ &amp; เวลา</label>
+              <input type="datetime-local" id="tradeDate" class="form-input"/>
+            </div>
+            <div class="form-row">
+              <label class="form-label">ทิศทาง</label>
+              <div class="toggle-group">
+                <button class="toggle-btn active" data-dir="BUY" onclick="setDirection('BUY', this)">📈 BUY</button>
+                <button class="toggle-btn" data-dir="SELL" onclick="setDirection('SELL', this)">📉 SELL</button>
+              </div>
+            </div>
+            <div class="form-row two-col">
+              <div>
+                <label class="form-label">ราคาเข้า (Entry)</label>
+                <input type="number" id="entryPrice" class="form-input" placeholder="2350.00" step="0.01" oninput="calcPoints()"/>
+              </div>
+              <div>
+                <label class="form-label">ราคาออก (Exit)</label>
+                <input type="number" id="exitPrice" class="form-input" placeholder="2360.00" step="0.01" oninput="calcPoints()"/>
+              </div>
+            </div>
+            <div class="form-row two-col">
+              <div>
+                <label class="form-label">TP (จุด)</label>
+                <input type="number" id="tpPoints" class="form-input" placeholder="15" step="0.1"/>
+              </div>
+              <div>
+                <label class="form-label">SL (จุด)</label>
+                <input type="number" id="slPoints" class="form-input" placeholder="10" step="0.1"/>
+              </div>
+            </div>
+            <div class="form-row">
+              <label class="form-label">จุดที่ได้/เสีย (คำนวณอัตโนมัติ)</label>
+              <div class="points-display" id="pointsPreview">— กรุณากรอกราคาเข้าและออก</div>
+            </div>
+            <div class="form-row">
+              <label class="form-label">ผลลัพธ์</label>
+              <div class="toggle-group">
+                <button class="toggle-btn result-btn active" data-res="WIN" onclick="setResult('WIN', this)">✅ WIN</button>
+                <button class="toggle-btn result-btn" data-res="LOSS" onclick="setResult('LOSS', this)">❌ LOSS</button>
+                <button class="toggle-btn result-btn" data-res="BE" onclick="setResult('BE', this)">⚡ BE</button>
+              </div>
+            </div>
+            <div class="form-row">
+              <label class="form-label">โน้ต (ไม่บังคับ)</label>
+              <textarea id="tradeNote" class="form-input form-textarea" placeholder="กลยุทธ์, เหตุผลในการเข้า, บทเรียน..."></textarea>
+            </div>
+            <button class="btn-submit" onclick="addTrade()">
+              <span class="btn-icon">⬡</span> บันทึกการเทรด
+            </button>
+          </div>
+        </div>
+
+        <!-- SUMMARY PANEL -->
+        <div class="panel panel-summary">
+          <div class="panel-header">
+            <span class="panel-icon">◈</span>
+            <h2 class="panel-title">สรุปผล</h2>
+          </div>
+          <div class="summary-body">
+            <div class="summary-item">
+              <span class="s-label">จุดรวมที่ชนะ</span>
+              <span class="s-val green" id="sumWinPts">+0.0</span>
+            </div>
+            <div class="summary-item">
+              <span class="s-label">จุดรวมที่แพ้</span>
+              <span class="s-val red" id="sumLossPts">-0.0</span>
+            </div>
+            <div class="summary-divider"></div>
+            <div class="summary-item summary-net">
+              <span class="s-label">สุทธิ</span>
+              <span class="s-val" id="sumNet">0.0 pts</span>
+            </div>
+            <div class="summary-item">
+              <span class="s-label">ค่าเฉลี่ย Win</span>
+              <span class="s-val green" id="avgWin">—</span>
+            </div>
+            <div class="summary-item">
+              <span class="s-label">ค่าเฉลี่ย Loss</span>
+              <span class="s-val red" id="avgLoss">—</span>
+            </div>
+            <div class="summary-item">
+              <span class="s-label">Risk/Reward Ratio</span>
+              <span class="s-val gold" id="rr">—</span>
+            </div>
+            <div class="summary-item">
+              <span class="s-label">Profit Factor</span>
+              <span class="s-val gold" id="profitFactor">—</span>
+            </div>
+            <div class="summary-divider"></div>
+            <div class="summary-item">
+              <span class="s-label">Best Trade</span>
+              <span class="s-val green" id="bestTrade">—</span>
+            </div>
+            <div class="summary-item">
+              <span class="s-label">Worst Trade</span>
+              <span class="s-val red" id="worstTrade">—</span>
+            </div>
+            <div class="summary-item">
+              <span class="s-label">Win Streak สูงสุด</span>
+              <span class="s-val gold" id="winStreak">—</span>
+            </div>
+            <div class="summary-item">
+              <span class="s-label">Breakeven Trades</span>
+              <span class="s-val" id="beTrades">—</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TRADE HISTORY TABLE -->
+      <div class="panel panel-table">
+        <div class="panel-header">
+          <span class="panel-icon">≡</span>
+          <h2 class="panel-title">ประวัติการเทรด</h2>
+          <div class="table-controls">
+            <input type="text" id="searchInput" class="search-input" placeholder="ค้นหา..." oninput="renderTable()"/>
+            <select id="filterResult" class="filter-select" onchange="renderTable()">
+              <option value="">ทั้งหมด</option>
+              <option value="WIN">WIN</option>
+              <option value="LOSS">LOSS</option>
+              <option value="BE">BE</option>
+            </select>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table class="trade-table">
+            <thead>
+              <tr>
+                <th onclick="sortTable('date')"># วันที่ <span class="sort-arrow" id="sort-date">↕</span></th>
+                <th>ทิศทาง</th>
+                <th onclick="sortTable('entry')">Entry <span class="sort-arrow" id="sort-entry">↕</span></th>
+                <th onclick="sortTable('exit')">Exit <span class="sort-arrow" id="sort-exit">↕</span></th>
+                <th onclick="sortTable('points')">จุด <span class="sort-arrow" id="sort-points">↕</span></th>
+                <th>TP / SL</th>
+                <th>ผล</th>
+                <th>โน้ต</th>
+                <th>ลบ</th>
+              </tr>
+            </thead>
+            <tbody id="tradeTableBody">
+              <tr class="empty-row">
+                <td colspan="9">
+                  <div class="empty-state">
+                    <div class="empty-icon">⬡</div>
+                    <p>ยังไม่มีข้อมูลการเทรด</p>
+                    <p class="empty-sub">เริ่มบันทึกการเทรดแรกของคุณด้านบน</p>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- TOAST -->
+  <div class="toast" id="toast"></div>
+
+  <script src="app.js"></script>
 </body>
 </html>
