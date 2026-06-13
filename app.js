@@ -1,363 +1,180 @@
-// ── CONFIG ──
+// Supabase Configuration การตั้งค่าของคุณ
 const SUPABASE_URL = "https://svqdlgauejvnrpqttzey.supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN2cWRsZ2F1ZWp2bnJwcXR0emV5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEzNTg3NjQsImV4cCI6MjA5NjkzNDc2NH0.glkc753AH_F50WowGozeQtWQxkIO4lf9t1-IIG3NNfE";
-const TABLE       = "gold_trades";
-const PTS_PER_UNIT = 100; // 1 unit = 100 จุด
 
-// ── STATE ──
-let trades  = [];
-let result  = "WIN";
-let sortKey = "date";
-let sortDir = "desc";
+// เริ่มต้นเปิดใช้งานตัวช่วยของ Supabase Client
+const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-// ── SUPABASE ──
-async function sbFetch(path, opts = {}) {
-  const r = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
-    ...opts,
-    headers: {
-      "apikey":        SUPABASE_KEY,
-      "Authorization": `Bearer ${SUPABASE_KEY}`,
-      "Content-Type":  "application/json",
-      "Prefer":        opts.method === "POST" ? "return=representation" : "",
-      ...(opts.headers || {})
+// ตั้งค่าปฏิทินในฟอร์มให้ตรงกับวันปัจจุบัน
+document.getElementById('trade_date').valueAsDate = new Date();
+
+// เมื่อหน้าเว็บโหลดโครงสร้างเสร็จ ให้ดึงข้อมูลมาแสดงผลทันที
+document.addEventListener('DOMContentLoaded', fetchTrades);
+
+// ดึงข้อมูลประวัติจากตาราง gold_trades บน Supabase
+async function fetchTrades() {
+    try {
+        const { data, error } = await supabase
+            .from('gold_trades')
+            .select('*')
+            .order('trade_date', { ascending: false })
+            .order('id', { ascending: false });
+
+        if (error) throw error;
+        renderTrades(data);
+        calculateStats(data);
+    } catch (error) {
+        console.error("Error fetching data:", error.message);
+        alert("ไม่สามารถดึงข้อมูลได้ กรุณาตรวจสอบการตั้งค่าในระบบหลังบ้านหรือ RLS");
     }
-  });
-  if (!r.ok) throw new Error(await r.text());
-  const t = await r.text();
-  return t ? JSON.parse(t) : null;
 }
 
-async function loadTrades() {
-  showLoading(true);
-  try {
-    trades = await sbFetch(`${TABLE}?order=trade_date.desc&select=*`) || [];
-    updateStats(); renderTable();
-  } catch(e) {
-    showToast("❌ โหลดไม่สำเร็จ: " + e.message);
-  } finally { showLoading(false); }
+// นำอาร์เรย์ของข้อมูลมาทำซ้ำแล้วเรนเดอร์ลงในตาราง HTML
+function renderTrades(trades) {
+    const listContainer = document.getElementById('trade-list');
+    document.getElementById('trade-count').innerText = `${trades.length} ออเดอร์`;
+
+    if (trades.length === 0) {
+        listContainer.innerHTML = `
+            <tr>
+                <td colspan="5" class="px-6 py-10 text-center text-gray-500">ยังไม่มีประวัติการเทรดถูกบันทึกไว้</td>
+            </tr>
+        `;
+        return;
+    }
+
+    let html = '';
+    trades.forEach(trade => {
+        const isWin = trade.result_status === 'WIN';
+        const statusClass = isWin ? 'text-green-500 bg-green-500/10' : 'text-red-400 bg-red-400/10';
+        const typeClass = trade.type === 'BUY' ? 'text-green-500 border-green-500/30' : 'text-red-500 border-red-500/30';
+        const formattedPoints = isWin ? `+${trade.points_result}` : `-${Math.abs(trade.points_result)}`;
+
+        html += `
+            <tr class="hover:bg-gray-800/40 transition">
+                <td class="px-6 py-4 text-gray-300 font-medium">${formatDate(trade.trade_date)}</td>
+                <td class="px-6 py-4">
+                    <span class="px-2 py-0.5 border text-xs font-bold rounded-md ${typeClass}">${trade.type}</span>
+                </td>
+                <td class="px-6 py-4 text-xs font-mono text-gray-400">
+                    <div>Entry: <span class="text-gray-200">${parseFloat(trade.entry_price).toFixed(2)}</span></div>
+                    <div class="mt-0.5">Exit: <span class="text-gray-200">${parseFloat(trade.exit_price).toFixed(2)}</span></div>
+                </td>
+                <td class="px-6 py-4 text-right font-semibold font-mono">
+                    <span class="px-2.5 py-1 rounded-lg text-sm ${statusClass}">${formattedPoints}</span>
+                </td>
+                <td class="px-6 py-4 text-center">
+                    <button onclick="deleteTrade(${trade.id})" class="text-gray-500 hover:text-red-400 transition cursor-pointer">
+                        <svg class="w-5 h-5 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                    </button>
+                </td>
+            </tr>
+        `;
+    });
+    listContainer.innerHTML = html;
 }
 
-// ── AUTO CALC ──
-// Logic:
-//   BUY  → TP > Entry > SL   (คาดว่าราคาขึ้น)
-//   SELL → SL > Entry > TP   (คาดว่าราคาลง)
-// จุด = ผลต่างราคา x 10 (ราคาทอง 1$ = 10 จุด, 0.1$ = 1 จุด)
-// 1 unit = 100 จุด
+// คำนวณเปอร์เซ็นต์ Win Rate และจำนวนจุดฝั่งบวกและลบทั้งหมด
+function calculateStats(trades) {
+    const total = trades.length;
+    if (total === 0) {
+        updateStatDOM(0, 0, 0, 0, 0, 0);
+        return;
+    }
 
-function getValues() {
-  return {
-    entry: parseFloat(document.getElementById("entryPrice").value) || 0,
-    tp:    parseFloat(document.getElementById("tpPrice").value)    || 0,
-    sl:    parseFloat(document.getElementById("slPrice").value)    || 0,
-    exit:  parseFloat(document.getElementById("exitPrice").value)  || 0,
-  };
+    const winsList = trades.filter(t => t.result_status === 'WIN');
+    const lossesList = trades.filter(t => t.result_status === 'LOSS');
+    
+    const totalWins = winsList.length;
+    const totalLosses = lossesList.length;
+    const winRate = ((totalWins / total) * 100).toFixed(1);
+    
+    const totalProfitPoints = winsList.reduce((sum, t) => sum + parseFloat(t.points_result), 0);
+    const totalLossPoints = lossesList.reduce((sum, t) => sum + Math.abs(parseFloat(t.points_result)), 0);
+
+    updateStatDOM(winRate, total, totalWins, totalLosses, totalProfitPoints, totalLossPoints);
 }
 
-function priceToPts(diff) {
-  // XAU/USD: 1 pip = $0.10, 1 จุด = $0.1 → diff * 10
-  return Math.round(diff * 10 * 10) / 10;
+// แสดงตัวเลขการคำนวณลงในโครงสร้าง UI ของแต่ละช่องการ์ดแบบเรียลไทม์
+function updateStatDOM(winRate, total, wins, losses, profitPoints, lossPoints) {
+    document.getElementById('stat-winrate').innerText = `${winRate}%`;
+    document.getElementById('stat-winrate-bar').style.width = `${winRate}%`;
+    document.getElementById('stat-total').innerText = total;
+    document.getElementById('stat-wins').innerText = wins;
+    document.getElementById('stat-losses').innerText = losses;
+    document.getElementById('stat-profit-points').innerText = `+${Math.round(profitPoints)}`;
+    document.getElementById('stat-loss-points').innerText = `-${Math.round(lossPoints)}`;
 }
 
-function autoCalc() {
-  const { entry, tp, sl, exit } = getValues();
+// ตรวจจับเหตุการณ์ฟอร์มส่งข้อมูล เพื่อคิดคำนวณจุดและอัปโหลดขึ้นเซิร์ฟเวอร์
+document.getElementById('trade-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
 
-  // ── ตรวจทิศทาง ──
-  let dir = null;
-  const dirChip = document.getElementById("dirChip");
-  const dirValEl = document.getElementById("dirVal");
+    const trade_date = document.getElementById('trade_date').value;
+    const type = document.querySelector('input[name="type"]:checked').value;
+    const entry_price = parseFloat(document.getElementById('entry_price').value);
+    const exit_price = parseFloat(document.getElementById('exit_price').value);
 
-  if (entry && tp && sl) {
-    if (tp > entry && entry > sl) {
-      dir = "BUY";
-      dirChip.className = "dir-chip is-buy";
-      dirValEl.textContent = "📈 BUY";
-    } else if (sl > entry && entry > tp) {
-      dir = "SELL";
-      dirChip.className = "dir-chip is-sell";
-      dirValEl.textContent = "📉 SELL";
+    let points_result = 0;
+    let result_status = 'WIN';
+
+    // คำนวณความต่างราคาแปลงเป็น Points (ราคาทองคำเคลื่อนที่ 1 USD = 100 จุด)
+    if (type === 'BUY') {
+        points_result = (exit_price - entry_price) * 100;
     } else {
-      dirChip.className = "dir-chip";
-      dirValEl.textContent = "⚠️ ตรวจสอบ TP/SL";
+        points_result = (entry_price - exit_price) * 100;
     }
-  } else {
-    dirChip.className = "dir-chip";
-    dirValEl.textContent = "— กรอก Entry + TP/SL";
-  }
 
-  // ── คำนวณ TP/SL เป็นจุด ──
-  const calcTP = document.getElementById("calcTP");
-  const calcSL = document.getElementById("calcSL");
-  const rrValEl = document.getElementById("rrVal");
+    points_result = Math.round(points_result);
+    result_status = points_result >= 0 ? 'WIN' : 'LOSS';
 
-  if (dir && entry && tp && sl) {
-    const tpPts = dir === "BUY" ? priceToPts(tp - entry) : priceToPts(entry - tp);
-    const slPts = dir === "BUY" ? priceToPts(entry - sl) : priceToPts(sl - entry);
-    calcTP.textContent = `+${tpPts.toFixed(1)} pts (${(tpPts/PTS_PER_UNIT).toFixed(2)} u)`;
-    calcSL.textContent = `-${slPts.toFixed(1)} pts (${(slPts/PTS_PER_UNIT).toFixed(2)} u)`;
+    try {
+        const { error } = await supabase
+            .from('gold_trades')
+            .insert([
+                { 
+                    trade_date, 
+                    type, 
+                    entry_price, 
+                    exit_price, 
+                    points_result: Math.abs(points_result), 
+                    result_status 
+                }
+            ]);
 
-    if (slPts > 0) {
-      const rr = tpPts / slPts;
-      document.getElementById("rrVal").textContent = "1 : " + rr.toFixed(2);
-    } else {
-      document.getElementById("rrVal").textContent = "—";
+        if (error) throw error;
+
+        // เคลียร์ค่ากล่องข้อความราคา เพื่อให้พร้อมพิมพ์ออเดอร์ถัดไป
+        document.getElementById('entry_price').value = '';
+        document.getElementById('exit_price').value = '';
+        fetchTrades();
+
+    } catch (error) {
+        console.error("Error inserting data:", error.message);
+        alert("ไม่สามารถบันทึกข้อมูลได้: " + error.message);
     }
-  } else {
-    calcTP.textContent = "— pts";
-    calcSL.textContent = "— pts";
-    document.getElementById("rrVal").textContent = "—";
-  }
-
-  // ── คำนวณผลจาก Exit ──
-  const rp = document.getElementById("resultPreview");
-  if (dir && entry && exit) {
-    const pts = dir === "BUY" ? priceToPts(exit - entry) : priceToPts(entry - exit);
-    const units = pts / PTS_PER_UNIT;
-    if (pts > 0) {
-      rp.className = "result-preview rp-win";
-      rp.innerHTML = `<span class="rp-icon">✅</span> <span>กำไร +${pts.toFixed(1)} จุด (${units.toFixed(2)} units)</span>`;
-    } else if (pts < 0) {
-      rp.className = "result-preview rp-loss";
-      rp.innerHTML = `<span class="rp-icon">❌</span> <span>ขาดทุน ${pts.toFixed(1)} จุด (${units.toFixed(2)} units)</span>`;
-    } else {
-      rp.className = "result-preview rp-be";
-      rp.innerHTML = `<span class="rp-icon">⚡</span> <span>Breakeven 0.0 จุด</span>`;
-    }
-  } else {
-    rp.className = "result-preview";
-    rp.innerHTML = `<span class="rp-icon">⬡</span> <span id="resultText">กรอกราคาออกเพื่อดูผล</span>`;
-  }
-}
-
-// ── RESULT TOGGLE ──
-function setResult(res, btn) {
-  result = res;
-  document.querySelectorAll(".rb").forEach(b => b.classList.remove("active"));
-  btn.classList.add("active");
-}
-
-// ── ADD TRADE ──
-async function addTrade() {
-  const { entry, tp, sl, exit } = getValues();
-  const dateVal = document.getElementById("tradeDate").value;
-  const note    = document.getElementById("tradeNote").value.trim();
-
-  if (!dateVal || !entry || !exit) {
-    showToast("⚠️ กรุณากรอกวันที่, Entry และ Exit"); return;
-  }
-
-  // คำนวณทิศทางอัตโนมัติ
-  let dir = "BUY";
-  if (tp && sl) {
-    if (sl > entry && entry > tp) dir = "SELL";
-  }
-
-  const pts   = dir === "BUY" ? priceToPts(exit - entry) : priceToPts(entry - exit);
-  const units = pts / PTS_PER_UNIT;
-
-  // TP/SL เป็นจุด
-  let tpPts = null, slPts = null;
-  if (tp && sl) {
-    tpPts = dir === "BUY" ? priceToPts(tp - entry) : priceToPts(entry - tp);
-    slPts = dir === "BUY" ? priceToPts(entry - sl) : priceToPts(sl - entry);
-  }
-
-  const trade = {
-    trade_date:  new Date(dateVal).toISOString(),
-    direction:   dir,
-    entry_price: entry,
-    exit_price:  exit,
-    tp_price:    tp || null,
-    sl_price:    sl || null,
-    tp_points:   tpPts,
-    sl_points:   slPts,
-    points:      pts,
-    units:       Math.round(units * 100) / 100,
-    result,
-    note: note || null
-  };
-
-  const btn = document.querySelector(".btn-save");
-  btn.textContent = "⏳ กำลังบันทึก...";
-  btn.disabled = true;
-
-  try {
-    const saved = await sbFetch(TABLE, { method: "POST", body: JSON.stringify(trade) });
-    trades.unshift(saved?.[0] || { ...trade, id: Date.now() });
-    updateStats(); renderTable(); resetForm();
-    showToast("✅ บันทึกสำเร็จ!");
-  } catch(e) {
-    showToast("❌ บันทึกไม่สำเร็จ: " + e.message);
-  } finally {
-    btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> บันทึกการเทรด`;
-    btn.disabled = false;
-  }
-}
-
-async function removeTrade(id) {
-  if (!confirm("ลบรายการนี้?")) return;
-  try {
-    await sbFetch(`${TABLE}?id=eq.${id}`, { method:"DELETE", headers:{"Prefer":"return=minimal"} });
-    trades = trades.filter(t => t.id !== id);
-    updateStats(); renderTable();
-    showToast("🗑️ ลบสำเร็จ");
-  } catch(e) { showToast("❌ ลบไม่สำเร็จ"); }
-}
-
-function resetForm() {
-  ["entryPrice","tpPrice","slPrice","exitPrice","tradeNote"].forEach(id => {
-    document.getElementById(id).value = "";
-  });
-  document.getElementById("dirChip").className = "dir-chip";
-  document.getElementById("dirVal").textContent = "— กรอก Entry + TP/SL";
-  document.getElementById("rrVal").textContent = "—";
-  document.getElementById("calcTP").textContent = "— pts";
-  document.getElementById("calcSL").textContent = "— pts";
-  document.getElementById("resultPreview").className = "result-preview";
-  document.getElementById("resultPreview").innerHTML = `<span class="rp-icon">⬡</span> <span>กรอกราคาออกเพื่อดูผล</span>`;
-  setNow();
-}
-
-// ── STATS ──
-function updateStats() {
-  const wins   = trades.filter(t => t.result === "WIN");
-  const losses = trades.filter(t => t.result === "LOSS");
-  const bes    = trades.filter(t => t.result === "BE");
-  const total  = trades.length;
-  const wRate  = total > 0 ? (wins.length / total) * 100 : 0;
-
-  const winPts  = wins.reduce((s,t)   => s + (t.points||0), 0);
-  const lossPts = losses.reduce((s,t) => s + Math.abs(t.points||0), 0);
-  const netPts  = trades.reduce((s,t) => s + (t.points||0), 0);
-
-  const avgWin  = wins.length   > 0 ? winPts / wins.length   : null;
-  const avgLoss = losses.length > 0 ? lossPts / losses.length : null;
-  const rr      = avgWin && avgLoss ? avgWin / avgLoss : null;
-  const pf      = lossPts > 0 ? winPts / lossPts : null;
-
-  const allPts = trades.map(t => t.points||0);
-  const best   = allPts.length ? Math.max(...allPts) : null;
-  const worst  = allPts.length ? Math.min(...allPts) : null;
-
-  let maxStreak = 0, cur = 0;
-  [...trades].reverse().forEach(t => {
-    if (t.result === "WIN") { cur++; maxStreak = Math.max(maxStreak,cur); } else cur = 0;
-  });
-
-  set("winRate",     total > 0 ? wRate.toFixed(1)+"%" : "—");
-  set("totalWins",   wins.length);
-  set("totalLosses", losses.length);
-  set("totalTrades", total);
-  set("winPoints",   "+" + winPts.toFixed(1) + " pts");
-  set("lossPoints",  "-" + lossPts.toFixed(1) + " pts");
-
-  const netEl = document.getElementById("netPoints");
-  if(netEl){ netEl.textContent = (netPts>=0?"+":"") + netPts.toFixed(1); netEl.className = "kpi-val "+(netPts>0?"green":netPts<0?"red":""); }
-  set("netUnits", (netPts>=0?"+":"") + (netPts/PTS_PER_UNIT).toFixed(2) + " units");
-  document.getElementById("winRateBar").style.width = wRate + "%";
-
-  set("sumWinPts",  "+" + winPts.toFixed(1) + " pts  (+"+((winPts/PTS_PER_UNIT).toFixed(2))+" u)");
-  set("sumLossPts", "-" + lossPts.toFixed(1) + " pts  (-"+((lossPts/PTS_PER_UNIT).toFixed(2))+" u)");
-
-  const snEl = document.getElementById("sumNet");
-  if(snEl){ snEl.textContent = (netPts>=0?"+":"") + netPts.toFixed(1) + " pts"; snEl.style.color = netPts>0?"var(--green)":netPts<0?"var(--red)":"var(--gold)"; }
-  set("sumNetUnit", "= " + (netPts>=0?"+":"") + (netPts/PTS_PER_UNIT).toFixed(2) + " units");
-
-  set("avgWin",       avgWin  ? "+"+avgWin.toFixed(1)+" pts" : "—");
-  set("avgLoss",      avgLoss ? "-"+avgLoss.toFixed(1)+" pts" : "—");
-  set("rr",           rr  ? "1 : "+rr.toFixed(2) : "—");
-  set("profitFactor", pf  ? pf.toFixed(2) : "—");
-  set("bestTrade",    best!==null  ? (best>=0?"+":"")+best.toFixed(1)+" pts" : "—");
-  set("worstTrade",   worst!==null ? (worst>=0?"+":"")+worst.toFixed(1)+" pts" : "—");
-  set("winStreak",    maxStreak > 0 ? maxStreak+" ครั้ง" : "—");
-  set("beTrades",     bes.length || "—");
-}
-
-function set(id, v) { const e=document.getElementById(id); if(e) e.textContent=v; }
-
-// ── TABLE ──
-function sortTable(key) {
-  if(sortKey===key) sortDir = sortDir==="asc"?"desc":"asc";
-  else { sortKey=key; sortDir="desc"; }
-  document.querySelectorAll(".tbl thead th i").forEach(e => e.className="");
-  const el = document.getElementById("sort-"+key);
-  if(el) el.className = sortDir;
-  renderTable();
-}
-
-function renderTable() {
-  const q = (document.getElementById("searchInput")?.value||"").toLowerCase();
-  const f = document.getElementById("filterResult")?.value||"";
-  const map = { date:"trade_date", entry:"entry_price", exit:"exit_price", points:"points" };
-
-  let rows = trades.filter(t => {
-    const mf = !f || t.result===f || t.direction===f;
-    const ms = !q || (t.note||"").toLowerCase().includes(q) || (t.direction||"").toLowerCase().includes(q)
-                  || String(t.entry_price||"").includes(q) || String(t.exit_price||"").includes(q);
-    return mf && ms;
-  });
-
-  rows.sort((a,b) => {
-    const k = map[sortKey]||"trade_date";
-    const va=a[k]??"", vb=b[k]??"";
-    return sortDir==="asc" ? (va<vb?-1:va>vb?1:0) : (va>vb?-1:va<vb?1:0);
-  });
-
-  const tbody = document.getElementById("tradeTableBody");
-  if(!rows.length) {
-    tbody.innerHTML = `<tr><td colspan="10"><div class="empty-st"><div class="em-ico">Au</div><p>ไม่พบข้อมูล</p><p class="em-sub">ลองเปลี่ยน filter</p></div></td></tr>`;
-    return;
-  }
-
-  tbody.innerHTML = rows.map((t,i) => {
-    const d   = new Date(t.trade_date);
-    const ds  = `${d.getDate().toString().padStart(2,"0")}/${(d.getMonth()+1).toString().padStart(2,"0")}/${d.getFullYear()}`;
-    const ts  = `${d.getHours().toString().padStart(2,"0")}:${d.getMinutes().toString().padStart(2,"0")}`;
-    const pts = t.points||0;
-    const u   = t.units ?? (pts/PTS_PER_UNIT);
-    const pCls = pts>0?"pts-p":pts<0?"pts-n":"";
-    const dCls = t.direction==="BUY"?"dir-b":"dir-s";
-    const dIco = t.direction==="BUY"?"▲":"▼";
-    const badge = t.result==="WIN"?"bw":t.result==="LOSS"?"bl":"bb";
-    const tpStr = t.tp_points!=null ? `<span style="color:var(--green)">+${t.tp_points}</span>` : "—";
-    const slStr = t.sl_points!=null ? `<span style="color:var(--red)">-${t.sl_points}</span>` : "—";
-
-    return `<tr>
-      <td><b class="td-num">${rows.length-i}</b><span class="td-date">${ds} ${ts}</span></td>
-      <td class="${dCls}">${dIco} ${t.direction}</td>
-      <td class="td-num">${t.entry_price?.toFixed(2)??"—"}</td>
-      <td style="font-size:11px">${tpStr} / ${slStr}</td>
-      <td class="td-num">${t.exit_price?.toFixed(2)??"—"}</td>
-      <td class="${pCls}" style="font-weight:700">${(pts>=0?"+":"")+pts.toFixed(1)}</td>
-      <td style="color:var(--cream2)">${(u>=0?"+":"")+u.toFixed(2)} u</td>
-      <td><span class="badge ${badge}">${t.result}</span></td>
-      <td class="note-c" title="${t.note||""}">${t.note||"—"}</td>
-      <td><button class="btn-del" onclick="removeTrade('${t.id}')">✕</button></td>
-    </tr>`;
-  }).join("");
-}
-
-// ── HELPERS ──
-function showToast(msg) {
-  const el = document.getElementById("toast");
-  el.textContent = msg; el.classList.add("show");
-  setTimeout(()=>el.classList.remove("show"), 3000);
-}
-
-let ldEl = null;
-function showLoading(show) {
-  if(show) {
-    if(!ldEl){ ldEl=document.createElement("div"); ldEl.className="ld-overlay"; ldEl.innerHTML="<div class='ld-spin'></div>"; document.body.appendChild(ldEl); }
-  } else { if(ldEl){ ldEl.remove(); ldEl=null; } }
-}
-
-function setNow() {
-  const now = new Date();
-  document.getElementById("tradeDate").value =
-    new Date(now.getTime() - now.getTimezoneOffset()*60000).toISOString().slice(0,16);
-}
-
-// ── INIT ──
-document.addEventListener("DOMContentLoaded", () => {
-  setNow();
-  loadTrades();
 });
+
+// ฟังก์ชันลบแถวข้อมูลตามไอดี
+async function deleteTrade(id) {
+    if (!confirm('คุณแน่ใจใช่ไหมที่จะลบประวัติออเดอร์นี้?')) return;
+
+    try {
+        const { error } = await supabase
+            .from('gold_trades')
+            .delete()
+            .eq('id', id);
+
+        if (error) throw error;
+        fetchTrades();
+    } catch (error) {
+        console.error("Error deleting data:", error.message);
+        alert("ไม่สามารถลบข้อมูลได้");
+    }
+}
+
+// จัดการรูปแบบวันที่แสดงผลให้เป็นภาษาไทยแบบย่ออ่านง่าย
+function formatDate(dateString) {
+    const options = { day: 'numeric', month: 'short', year: 'numeric' };
+    return new Date(dateString).toLocaleDateString('th-TH', options);
+}
