@@ -8,6 +8,7 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
+
     <div class="container">
         <h1>📊 Trading Journal Dashboard</h1>
         
@@ -34,25 +35,28 @@
                     <option value="win">ชนะ (Win)</option>
                     <option value="loss">แพ้ (Loss)</option>
                 </select>
-                <input type="number" id="pnl" placeholder="กำไร/ขาดทุน ($)" required>
+                <input type="number" id="pnl" placeholder="กำไร/ขาดทุน ($)" step="any" required>
                 <button type="submit">บันทึกข้อมูล</button>
             </form>
         </div>
 
         <div class="history-container">
             <h2>ประวัติการเทรด</h2>
-            <table>
-                <thead>
-                    <tr>
-                        <th>วัน-เวลา</th>
-                        <th>สินทรัพย์</th>
-                        <th>ผลลัพธ์</th>
-                        <th>P&L</th>
-                    </tr>
-                </thead>
-                <tbody id="trade-history">
-                    </tbody>
-            </table>
+            <div style="overflow-x: auto;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>วัน-เวลา</th>
+                            <th>สินทรัพย์</th>
+                            <th>ผลลัพธ์</th>
+                            <th>P&L</th>
+                            <th>จัดการ</th>
+                        </tr>
+                    </thead>
+                    <tbody id="trade-history">
+                        </tbody>
+                </table>
+            </div>
         </div>
     </div>
 
