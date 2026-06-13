@@ -4,32 +4,37 @@ const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 
 let supabase;
 
+// เปิดใช้งาน Client ปลอดภัย ตรวจสอบออปชันคลาสจาก Window
 try {
-    if (window.supabase) {
-        supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    const supabaseClient = window.supabase;
+    if (supabaseClient) {
+        supabase = supabaseClient.createClient(SUPABASE_URL, SUPABASE_KEY);
     } else {
-        console.error("Supabase library loading failed.");
+        console.error("ไม่สามารถเรียกใช้คลาส Supabase จาก CDN ได้");
     }
 } catch (err) {
-    console.error("Initialization error:", err);
+    console.error("โครงสร้างตั้งค่าผิดพลาด:", err);
 }
 
-// 1. ดึงวันที่ปัจจุบันมาเซ็ตใส่ Input อัตโนมัติ (เป็นเวลาเครื่องผู้ใช้)
+// ล็อกเป้าหมายวันที่ปัจจุบันให้แสดงผลในช่องทันที
 try {
     const today = new Date().toISOString().split('T')[0];
     document.getElementById('trade_date').value = today;
 } catch (e) {
-    console.error("Error setting automatic date:", e);
+    console.error("เซ็ตวันที่อัตโนมัติไม่สำเร็จ:", e);
 }
 
-document.addEventListener('DOMContentLoaded', fetchTrades);
+// รันระบบดึงข้อมูลออเดอร์เมื่อเบราว์เซอร์เปิดขึ้นมา
+document.addEventListener('DOMContentLoaded', () => {
+    fetchTrades();
+});
 
-// ดึงข้อมูลประวัติการเทรดจาก Supabase
+// ดึงข้อมูลเรียลไทม์จากตาราง
 async function fetchTrades() {
     const listContainer = document.getElementById('trade-list');
     try {
         if (!supabase) {
-            listContainer.innerHTML = `<tr><td colspan="5" class="px-6 py-10 text-center text-red-400">เชื่อมต่อฐานข้อมูลไม่สำเร็จ</td></tr>`;
+            listContainer.innerHTML = `<tr><td colspan="5" class="px-6 py-10 text-center text-red-400">ตัวเชื่อมต่อฐานข้อมูลว่างเปล่า (ตรวจสอบสคริปต์ใน HTML)</td></tr>`;
             return;
         }
 
@@ -44,17 +49,17 @@ async function fetchTrades() {
         calculateStats(data);
     } catch (error) {
         console.error("Error fetching data:", error);
-        listContainer.innerHTML = `<tr><td colspan="5" class="px-6 py-10 text-center text-red-400">เกิดข้อผิดพลาด: ${error.message || 'ไม่สามารถโหลดข้อมูลได้'}</td></tr>`;
+        listContainer.innerHTML = `<tr><td colspan="5" class="px-6 py-10 text-center text-red-400">เกิดข้อผิดพลาดคัดกรอง: ${error.message || 'ไม่สามารถตอบรับฐานข้อมูล'}</td></tr>`;
     }
 }
 
-// แสดงผลตารางประวัติการเทรด
+// วาดตารางประวัติบนหน้าเว็บ
 function renderTrades(trades) {
     const listContainer = document.getElementById('trade-list');
     document.getElementById('trade-count').innerText = `${trades.length} ออเดอร์`;
 
     if (!trades || trades.length === 0) {
-        listContainer.innerHTML = `<tr><td colspan="5" class="px-6 py-10 text-center text-gray-500">ยังไม่มีประวัติการเทรดถูกบันทึกไว้</td></tr>`;
+        listContainer.innerHTML = `<tr><td colspan="5" class="px-6 py-10 text-center text-gray-500">ไม่มีข้อมูลการเทรดในประวัติของคุณ</td></tr>`;
         return;
     }
 
@@ -72,8 +77,8 @@ function renderTrades(trades) {
                     <span class="px-2 py-0.5 border text-xs font-bold rounded-md ${typeClass}">${trade.type}</span>
                 </td>
                 <td class="px-6 py-4 text-xs font-mono text-gray-400">
-                    <div>SL: <span class="text-gray-200">${parseFloat(trade.sl_price).toFixed(2)}</span></div>
-                    <div class="mt-0.5">TP: <span class="text-gray-200">${parseFloat(trade.tp_price).toFixed(2)}</span></div>
+                    <div>Entry: <span class="text-gray-200">${parseFloat(trade.entry_price).toFixed(2)}</span></div>
+                    <div class="mt-0.5 text-[11px] text-gray-500">SL: ${parseFloat(trade.sl_price).toFixed(2)} | TP: ${parseFloat(trade.tp_price).toFixed(2)}</div>
                 </td>
                 <td class="px-6 py-4 text-right font-semibold font-mono">
                     <span class="px-2.5 py-1 rounded-lg text-sm ${statusClass}">${formattedPoints}</span>
@@ -89,7 +94,7 @@ function renderTrades(trades) {
     listContainer.innerHTML = html;
 }
 
-// คำนวณสถิติภาพรวมแดชบอร์ด
+// ประมวลผลหน้าต่างภาพรวม แดชบอร์ดคาร์ด
 function calculateStats(trades) {
     const total = trades.length;
     if (total === 0) {
@@ -120,26 +125,33 @@ function updateStatDOM(winRate, total, wins, losses, profitPoints, lossPoints) {
     if(document.getElementById('stat-loss-points')) document.getElementById('stat-loss-points').innerText = `-${Math.round(lossPoints)}`;
 }
 
-// ตรวจสอบการฟอร์มบันทึกข้อมูล
+// ยิงฟอร์มบันทึกออเดอร์ใหม่พร้อมคำนวณจุดอัตโนมัติ
 document.getElementById('trade-form').addEventListener('submit', async (e) => {
     e.preventDefault();
 
     const trade_date = document.getElementById('trade_date').value;
+    const entry_price = parseFloat(document.getElementById('entry_price').value);
     const sl_price = parseFloat(document.getElementById('sl_price').value);
     const tp_price = parseFloat(document.getElementById('tp_price').value);
     const result_status = document.querySelector('input[name="result_status"]:checked').value;
 
-    if (sl_price === tp_price) {
-        alert("ราคา SL และ TP ไม่ควรเท่ากัน กรุณาตรวจสอบอีกครั้งครับ");
+    if (sl_price === tp_price || entry_price === sl_price) {
+        alert("ราคาที่กรอกมีค่าเท่ากัน กรุณาตรวจสอบทิศทางออเดอร์ใหม่อีกครั้งครับ");
         return;
     }
 
-    // 2. สรุปประเภทออเดอร์ BUY หรือ SELL อัตโนมัติจากโครงสร้างราคา SL / TP
-    // หลักการ: ถ้าเป้าหมายทำกำไร (TP) อยู่สูงกว่า จุดตัดขาดทุน (SL) แสดงว่าเป็นขาขึ้นหรือ BUY
+    // 1. ระบุทิศทางอัตโนมัติ: ถ้าเป้าทำกำไร (TP) ค้ำหัวสูงกว่า Stop Loss แปลว่าเป็นฝั่ง BUY
     const type = tp_price > sl_price ? 'BUY' : 'SELL';
 
-    // 3. คำนวณหาระยะจุด (Points) อัตโนมัติจากผลต่างของราคาคูณด้วย 100 (ตามหลักของทองคำ XAUUSD)
-    let points_result = Math.abs(tp_price - sl_price) * 100;
+    // 2. คำนวณหาระยะจุด (Points) ที่วิ่งได้จริงโดยขึ้นกับเงื่อนไข แพ้/ชนะ
+    let points_result = 0;
+    if (result_status === 'WIN') {
+        // ถ้าชนะ คิดจุดบวกจากระยะห่าง ราคาเข้า -> ไปหา TP
+        points_result = Math.abs(tp_price - entry_price) * 100;
+    } else {
+        // ถ้าแพ้ คิดจุดลบจากระยะห่าง ราคาเข้า -> โดนลากไปชน SL
+        points_result = Math.abs(entry_price - sl_price) * 100;
+    }
     points_result = Math.round(points_result);
 
     try {
@@ -149,6 +161,7 @@ document.getElementById('trade-form').addEventListener('submit', async (e) => {
                 { 
                     trade_date, 
                     type, 
+                    entry_price,
                     sl_price, 
                     tp_price, 
                     points_result: points_result, 
@@ -158,20 +171,21 @@ document.getElementById('trade-form').addEventListener('submit', async (e) => {
 
         if (error) throw error;
 
-        // ล้างกล่องข้อความราคากลับเป็นว่างเปล่าเพื่อรอกรอกออเดอร์ถัดไป
+        // ล้างฟอร์มราคากลับเป็นค่าว่างเพื่อพิมพ์ออเดอร์ถัดไปง่ายๆ
+        document.getElementById('entry_price').value = '';
         document.getElementById('sl_price').value = '';
         document.getElementById('tp_price').value = '';
         fetchTrades();
 
     } catch (error) {
         console.error("Error inserting data:", error);
-        alert("ไม่สามารถบันทึกข้อมูลได้: " + error.message);
+        alert("ไม่สามารถเพิ่มข้อมูลลงเซิร์ฟเวอร์ได้: " + error.message);
     }
 });
 
-// ฟังก์ชันลบข้อมูล
+// ลบรายการออเดอร์
 async function deleteTrade(id) {
-    if (!confirm('คุณแน่ใจใช่ไหมที่จะลบประวัติออเดอร์นี้?')) return;
+    if (!confirm('ยืนยันลบออเดอร์นี้ออกจากบันทึกถาวร?')) return;
 
     try {
         const { error } = await supabase
@@ -183,11 +197,11 @@ async function deleteTrade(id) {
         fetchTrades();
     } catch (error) {
         console.error("Error deleting data:", error);
-        alert("ไม่สามารถลบข้อมูลได้");
+        alert("ลบข้อมูลไม่สำเร็จ");
     }
 }
 
-// แปลงฟอร์แมตวันแสดงผลในตารางเป็นภาษาไทย
+// ตัวจัดฟอร์แมตวันภาษาไทย
 function formatDate(dateString) {
     try {
         const options = { day: 'numeric', month: 'short', year: 'numeric' };
