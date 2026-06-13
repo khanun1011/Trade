@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
     <link rel="stylesheet" href="style.css">
 </head>
 <body class="text-gray-100 min-h-screen font-sans">
@@ -64,30 +64,39 @@
                     </h2>
                     <form id="trade-form" class="space-y-4">
                         <div>
-                            <label class="block text-xs font-medium text-gray-400 mb-1">วันที่เทรด</label>
-                            <input type="date" id="trade_date" required class="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-yellow-500 transition">
+                            <label class="block text-xs font-medium text-gray-400 mb-1">วันที่เทรด (ดึงอัตโนมัติ)</label>
+                            <input type="date" id="trade_date" required class="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-yellow-500 transition [&::-webkit-calendar-picker-indicator]:invert">
                         </div>
+                        
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-medium text-gray-400 mb-1">ราคา SL (Stop Loss)</label>
+                                <input type="number" id="sl_price" step="0.01" required placeholder="เช่น 2040.00" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-yellow-500 transition">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-gray-400 mb-1">ราคา TP (Take Profit)</label>
+                                <input type="number" id="tp_price" step="0.01" required placeholder="เช่น 2065.00" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-yellow-500 transition">
+                            </div>
+                        </div>
+
+                        <div class="bg-gray-950/50 p-2.5 rounded-xl border border-gray-800 text-center text-xs text-gray-400">
+                            💡 ประเภท <span class="font-bold text-yellow-500">BUY / SELL</span> จะคำนวณอัตโนมัติจากระยะ SL และ TP
+                        </div>
+
                         <div>
-                            <label class="block text-xs font-medium text-gray-400 mb-1">ประเภท (Type)</label>
+                            <label class="block text-xs font-medium text-gray-400 mb-1">ผลลัพธ์ของออเดอร์นี้</label>
                             <div class="grid grid-cols-2 gap-2">
                                 <label class="border border-gray-700 rounded-xl p-2.5 flex items-center justify-center gap-2 cursor-pointer hover:bg-gray-800 transition">
-                                    <input type="radio" name="type" value="BUY" checked class="accent-green-500">
-                                    <span class="text-sm font-semibold text-green-500">BUY</span>
+                                    <input type="radio" name="result_status" value="WIN" checked class="accent-green-500">
+                                    <span class="text-sm font-semibold text-green-500">WIN (ชนะ)</span>
                                 </label>
                                 <label class="border border-gray-700 rounded-xl p-2.5 flex items-center justify-center gap-2 cursor-pointer hover:bg-gray-800 transition">
-                                    <input type="radio" name="type" value="SELL" class="accent-red-500">
-                                    <span class="text-sm font-semibold text-red-500">SELL</span>
+                                    <input type="radio" name="result_status" value="LOSS" class="accent-red-500">
+                                    <span class="text-sm font-semibold text-red-500">LOSS (แพ้)</span>
                                 </label>
                             </div>
                         </div>
-                        <div>
-                            <label class="block text-xs font-medium text-gray-400 mb-1">ราคาเข้า (Entry Price เช่น 2050.50)</label>
-                            <input type="number" id="entry_price" step="0.01" required placeholder="0.00" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-yellow-500 transition">
-                        </div>
-                        <div>
-                            <label class="block text-xs font-medium text-gray-400 mb-1">ราคาปิด (Exit Price เช่น 2060.00)</label>
-                            <input type="number" id="exit_price" step="0.01" required placeholder="0.00" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-yellow-500 transition">
-                        </div>
+
                         <button type="submit" class="w-full bg-gradient-to-r from-yellow-500 to-amber-600 text-gray-900 font-bold py-3 rounded-xl hover:opacity-90 transition mt-2 shadow-lg cursor-pointer">
                             บันทึกออเดอร์
                         </button>
@@ -107,8 +116,8 @@
                             <thead>
                                 <tr class="border-b border-gray-800 bg-gray-950 text-xs font-semibold text-gray-400 uppercase tracking-wider">
                                     <th class="px-6 py-4">วันที่</th>
-                                    <th class="px-6 py-4">ฝั่ง</th>
-                                    <th class="px-6 py-4">Entry / Exit</th>
+                                    <th class="px-6 py-4">ประเภท</th>
+                                    <th class="px-6 py-4">SL / TP</th>
                                     <th class="px-6 py-4 text-right">ผลลัพธ์ (จุด)</th>
                                     <th class="px-6 py-4 text-center">จัดการ</th>
                                 </tr>
