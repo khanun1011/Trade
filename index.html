@@ -1,301 +1,130 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>XAUUSD · Trade Journal</title>
-  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet"/>
-  <link rel="stylesheet" href="style.css"/>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gold Trading Journal & Statistics</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link rel="stylesheet" href="style.css">
 </head>
-<body>
+<body class="text-gray-100 min-h-screen font-sans">
 
-<!-- ░░ HEADER ░░ -->
-<header class="hdr">
-  <div class="hdr-tape">
-    <div class="tape-track">
-      <span>XAU/USD &nbsp;❖&nbsp; GOLD JOURNAL &nbsp;❖&nbsp; บันทึกการเทรดทอง &nbsp;❖&nbsp; WIN RATE TRACKER &nbsp;❖&nbsp; XAU/USD &nbsp;❖&nbsp; GOLD JOURNAL &nbsp;❖&nbsp; บันทึกการเทรดทอง &nbsp;❖&nbsp; WIN RATE TRACKER &nbsp;❖&nbsp;</span>
-    </div>
-  </div>
-  <div class="hdr-body">
-    <div class="hdr-logo">
-      <div class="logo-hex">
-        <svg viewBox="0 0 40 46" fill="none"><polygon points="20,1 39,11.5 39,34.5 20,45 1,34.5 1,11.5" stroke="#D4AF37" stroke-width="1.5" fill="rgba(212,175,55,0.06)"/><text x="50%" y="55%" dominant-baseline="middle" text-anchor="middle" fill="#D4AF37" font-size="14" font-family="serif">Au</text></svg>
-      </div>
-      <div>
-        <div class="logo-name">AURUM<span>LOG</span></div>
-        <div class="logo-sub">Gold Trading Statistics · XAU/USD</div>
-      </div>
-    </div>
-    <div class="hdr-right">
-      <div class="live-pill"><span class="live-dot"></span>LIVE</div>
-    </div>
-  </div>
-</header>
+    <div class="container mx-auto px-4 py-8 max-w-6xl">
+        <header class="flex justify-between items-center mb-10 border-b border-gray-800 pb-5">
+            <div>
+                <h1 class="text-3xl font-bold bg-gradient-to-r from-yellow-400 to-amber-500 bg-clip-text text-transparent">GOLD TRADING JOURNAL</h1>
+                <p class="text-gray-400 text-sm mt-1">บันทึกและวิเคราะห์สถิติการเทรดทองคำ (XAUUSD)</p>
+            </div>
+            <div class="bg-gray-900 border border-gray-800 px-4 py-2 rounded-lg text-xs text-gray-400 flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span> Supabase Connected
+            </div>
+        </header>
 
-<!-- ░░ STAT CARDS ░░ -->
-<section class="kpi-wrap">
-  <div class="wrap">
-    <div class="kpi-grid">
+        <section class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+            <div class="bg-gray-900 border border-gray-800 p-5 rounded-2xl flex flex-col justify-between shadow-lg">
+                <span class="text-gray-400 text-sm font-medium">Win Rate</span>
+                <div class="flex items-baseline gap-2 mt-2">
+                    <span id="stat-winrate" class="text-4xl font-bold text-yellow-500">0%</span>
+                </div>
+                <div class="w-full bg-gray-800 rounded-full h-1.5 mt-3">
+                    <div id="stat-winrate-bar" class="bg-yellow-500 h-1.5 rounded-full" style="width: 0%"></div>
+                </div>
+            </div>
+            <div class="bg-gray-900 border border-gray-800 p-5 rounded-2xl flex flex-col justify-between shadow-lg">
+                <span class="text-gray-400 text-sm font-medium">ทั้งหมด / ชนะ / แพ้</span>
+                <div class="text-2xl font-semibold mt-2 text-white">
+                    <span id="stat-total">0</span> <span class="text-gray-600 text-lg">/</span> 
+                    <span id="stat-wins" class="text-green-500">0</span> <span class="text-gray-600 text-lg">/</span> 
+                    <span id="stat-losses" class="text-red-500">0</span>
+                </div>
+                <span class="text-xs text-gray-500 mt-3">จำนวนออเดอร์ที่บันทึก</span>
+            </div>
+            <div class="bg-gray-900 border border-gray-800 p-5 rounded-2xl flex flex-col justify-between shadow-lg">
+                <span class="text-gray-400 text-sm font-medium">รวมจุดที่ชนะ (+ Points)</span>
+                <span id="stat-profit-points" class="text-3xl font-bold text-green-500 mt-2">+0</span>
+                <span class="text-xs text-gray-500 mt-3">จำนวนจุดสะสมฝั่งบวก</span>
+            </div>
+            <div class="bg-gray-900 border border-gray-800 p-5 rounded-2xl flex flex-col justify-between shadow-lg">
+                <span class="text-gray-400 text-sm font-medium">รวมจุดที่แพ้ (- Points)</span>
+                <span id="stat-loss-points" class="text-3xl font-bold text-red-400 mt-2">0</span>
+                <span class="text-xs text-gray-500 mt-3">จำนวนจุดสะสมฝั่งลบ</span>
+            </div>
+        </section>
 
-      <div class="kpi-card kpi-wr">
-        <div class="kpi-top">
-          <span class="kpi-label">Win Rate</span>
-          <span class="kpi-icon">🎯</span>
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div class="lg:col-span-1">
+                <div class="bg-gray-900 border border-gray-800 p-6 rounded-2xl shadow-xl sticky top-6">
+                    <h2 class="text-xl font-semibold mb-5 text-white flex items-center gap-2">
+                        <svg class="w-5 h-5 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        บันทึกการเทรดใหม่
+                    </h2>
+                    <form id="trade-form" class="space-y-4">
+                        <div>
+                            <label class="block text-xs font-medium text-gray-400 mb-1">วันที่เทรด</label>
+                            <input type="date" id="trade_date" required class="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-yellow-500 transition">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-400 mb-1">ประเภท (Type)</label>
+                            <div class="grid grid-cols-2 gap-2">
+                                <label class="border border-gray-700 rounded-xl p-2.5 flex items-center justify-center gap-2 cursor-pointer hover:bg-gray-800 transition">
+                                    <input type="radio" name="type" value="BUY" checked class="accent-green-500">
+                                    <span class="text-sm font-semibold text-green-500">BUY</span>
+                                </label>
+                                <label class="border border-gray-700 rounded-xl p-2.5 flex items-center justify-center gap-2 cursor-pointer hover:bg-gray-800 transition">
+                                    <input type="radio" name="type" value="SELL" class="accent-red-500">
+                                    <span class="text-sm font-semibold text-red-500">SELL</span>
+                                </label>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-400 mb-1">ราคาเข้า (Entry Price เช่น 2050.50)</label>
+                            <input type="number" id="entry_price" step="0.01" required placeholder="0.00" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-yellow-500 transition">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-400 mb-1">ราคาปิด (Exit Price เช่น 2060.00)</label>
+                            <input type="number" id="exit_price" step="0.01" required placeholder="0.00" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-yellow-500 transition">
+                        </div>
+                        <button type="submit" class="w-full bg-gradient-to-r from-yellow-500 to-amber-600 text-gray-900 font-bold py-3 rounded-xl hover:opacity-90 transition mt-2 shadow-lg cursor-pointer">
+                            บันทึกออเดอร์
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <div class="lg:col-span-2">
+                <div class="bg-gray-900 border border-gray-800 rounded-2xl shadow-xl overflow-hidden">
+                    <div class="px-6 py-5 border-b border-gray-800 flex justify-between items-center">
+                        <h2 class="text-xl font-semibold text-white">ประวัติการเทรดล่าสุด</h2>
+                        <span id="trade-count" class="text-xs bg-gray-800 text-gray-400 px-2.5 py-1 rounded-full">0 ออเดอร์</span>
+                    </div>
+                    
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="border-b border-gray-800 bg-gray-950 text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                                    <th class="px-6 py-4">วันที่</th>
+                                    <th class="px-6 py-4">ฝั่ง</th>
+                                    <th class="px-6 py-4">Entry / Exit</th>
+                                    <th class="px-6 py-4 text-right">ผลลัพธ์ (จุด)</th>
+                                    <th class="px-6 py-4 text-center">จัดการ</th>
+                                </tr>
+                            </thead>
+                            <tbody id="trade-list" class="divide-y divide-gray-800 text-sm">
+                                <tr>
+                                    <td colspan="5" class="px-6 py-10 text-center text-gray-500">กำลังโหลดข้อมูล...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
         </div>
-        <div class="kpi-val" id="winRate">—</div>
-        <div class="kpi-bar"><div class="kpi-bar-fill" id="winRateBar"></div></div>
-        <div class="kpi-foot">จากทั้งหมด <b id="totalTrades">0</b> ครั้ง</div>
-      </div>
-
-      <div class="kpi-card kpi-win">
-        <div class="kpi-top">
-          <span class="kpi-label">Wins</span>
-          <span class="kpi-icon">✅</span>
-        </div>
-        <div class="kpi-val green" id="totalWins">0</div>
-        <div class="kpi-sub">ครั้ง</div>
-        <div class="kpi-pts green" id="winPoints">+0.0 pts</div>
-      </div>
-
-      <div class="kpi-card kpi-loss">
-        <div class="kpi-top">
-          <span class="kpi-label">Losses</span>
-          <span class="kpi-icon">❌</span>
-        </div>
-        <div class="kpi-val red" id="totalLosses">0</div>
-        <div class="kpi-sub">ครั้ง</div>
-        <div class="kpi-pts red" id="lossPoints">-0.0 pts</div>
-      </div>
-
-      <div class="kpi-card kpi-net">
-        <div class="kpi-top">
-          <span class="kpi-label">Net Points</span>
-          <span class="kpi-icon">⚖️</span>
-        </div>
-        <div class="kpi-val" id="netPoints">0</div>
-        <div class="kpi-sub">จุดสุทธิ</div>
-        <div class="kpi-pts muted" id="netUnits">0.00 units</div>
-      </div>
-
-    </div>
-  </div>
-</section>
-
-<!-- ░░ MAIN ░░ -->
-<main class="main">
-  <div class="wrap">
-    <div class="col2">
-
-      <!-- FORM -->
-      <div class="card card-form">
-        <div class="card-hdr">
-          <div class="card-title-row">
-            <span class="card-dot"></span>
-            <h2>บันทึกการเทรด</h2>
-          </div>
-        </div>
-        <div class="form-inner">
-
-          <div class="fg">
-            <label>วันที่ &amp; เวลา</label>
-            <input type="datetime-local" id="tradeDate" class="fi"/>
-          </div>
-
-          <!-- PRICE ROW -->
-          <div class="fg-row3">
-            <div class="fg">
-              <label>ราคาเข้า <span class="lsub">Entry</span></label>
-              <input type="number" id="entryPrice" class="fi" placeholder="2350.00" step="0.01" oninput="autoCalc()"/>
-            </div>
-            <div class="fg">
-              <label>TP <span class="lsub">ราคา</span></label>
-              <input type="number" id="tpPrice" class="fi fi-tp" placeholder="2365.00" step="0.01" oninput="autoCalc()"/>
-            </div>
-            <div class="fg">
-              <label>SL <span class="lsub">ราคา</span></label>
-              <input type="number" id="slPrice" class="fi fi-sl" placeholder="2340.00" step="0.01" oninput="autoCalc()"/>
-            </div>
-          </div>
-
-          <!-- AUTO DIRECTION DISPLAY -->
-          <div class="dir-auto-row">
-            <div class="dir-chip" id="dirChip">
-              <span class="dir-label">ทิศทาง</span>
-              <span class="dir-val" id="dirVal">— กรอก Entry + TP/SL</span>
-            </div>
-            <div class="rr-chip" id="rrChip">
-              <span class="dir-label">R:R</span>
-              <span class="dir-val" id="rrVal">—</span>
-            </div>
-          </div>
-
-          <!-- CALC DISPLAY -->
-          <div class="calc-box" id="calcBox">
-            <div class="calc-row">
-              <span class="calc-lbl">TP</span>
-              <span class="calc-val green" id="calcTP">— pts</span>
-              <span class="calc-lbl">SL</span>
-              <span class="calc-val red" id="calcSL">— pts</span>
-            </div>
-          </div>
-
-          <!-- EXIT -->
-          <div class="fg">
-            <label>ราคาออก <span class="lsub">Exit (ใส่เมื่อปิดออเดอร์)</span></label>
-            <input type="number" id="exitPrice" class="fi" placeholder="2360.00" step="0.01" oninput="autoCalc()"/>
-          </div>
-
-          <!-- RESULT PREVIEW -->
-          <div class="result-preview" id="resultPreview">
-            <span class="rp-icon">⬡</span>
-            <span id="resultText">กรุณากรอกราคาออกเพื่อดูผล</span>
-          </div>
-
-          <!-- RESULT TOGGLE -->
-          <div class="fg">
-            <label>ผลลัพธ์ <span class="lsub">(ยืนยันด้วยตัวเอง)</span></label>
-            <div class="btns3">
-              <button class="rb rb-win active" onclick="setResult('WIN',this)">✅ WIN</button>
-              <button class="rb rb-loss" onclick="setResult('LOSS',this)">❌ LOSS</button>
-              <button class="rb rb-be" onclick="setResult('BE',this)">⚡ BE</button>
-            </div>
-          </div>
-
-          <div class="fg">
-            <label>โน้ต <span class="lsub">ไม่บังคับ</span></label>
-            <textarea id="tradeNote" class="fi fi-ta" placeholder="กลยุทธ์, เหตุผล, บทเรียน..."></textarea>
-          </div>
-
-          <button class="btn-save" onclick="addTrade()">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
-            บันทึกการเทรด
-          </button>
-        </div>
-      </div>
-
-      <!-- SUMMARY -->
-      <div class="card card-summary">
-        <div class="card-hdr">
-          <div class="card-title-row">
-            <span class="card-dot dot-gold"></span>
-            <h2>สรุปสถิติ</h2>
-          </div>
-        </div>
-        <div class="summary-inner">
-
-          <div class="sum-block">
-            <div class="sum-row">
-              <span class="sl">📈 จุดรวม WIN</span>
-              <span class="sv green" id="sumWinPts">+0.0</span>
-            </div>
-            <div class="sum-row">
-              <span class="sl">📉 จุดรวม LOSS</span>
-              <span class="sv red" id="sumLossPts">-0.0</span>
-            </div>
-          </div>
-
-          <div class="sum-net-card">
-            <div class="sn-label">สุทธิ (Net)</div>
-            <div class="sn-val" id="sumNet">0.0 pts</div>
-            <div class="sn-unit" id="sumNetUnit">= 0.00 units</div>
-          </div>
-
-          <div class="sum-block">
-            <div class="sum-row">
-              <span class="sl">Avg Win</span>
-              <span class="sv green" id="avgWin">—</span>
-            </div>
-            <div class="sum-row">
-              <span class="sl">Avg Loss</span>
-              <span class="sv red" id="avgLoss">—</span>
-            </div>
-            <div class="sum-row">
-              <span class="sl">Risk/Reward</span>
-              <span class="sv gold" id="rr">—</span>
-            </div>
-            <div class="sum-row">
-              <span class="sl">Profit Factor</span>
-              <span class="sv gold" id="profitFactor">—</span>
-            </div>
-          </div>
-
-          <div class="sum-sep"></div>
-
-          <div class="sum-block">
-            <div class="sum-row">
-              <span class="sl">Best Trade</span>
-              <span class="sv green" id="bestTrade">—</span>
-            </div>
-            <div class="sum-row">
-              <span class="sl">Worst Trade</span>
-              <span class="sv red" id="worstTrade">—</span>
-            </div>
-            <div class="sum-row">
-              <span class="sl">Win Streak สูงสุด</span>
-              <span class="sv gold" id="winStreak">—</span>
-            </div>
-            <div class="sum-row">
-              <span class="sl">Breakeven (BE)</span>
-              <span class="sv muted" id="beTrades">—</span>
-            </div>
-          </div>
-
-          <div class="legend-box">
-            <div class="leg-row"><span class="leg-dot ld-g"></span><span>1 unit = 100 จุด (pts)</span></div>
-            <div class="leg-row"><span class="leg-dot ld-b"></span><span>BUY: TP &gt; Entry &gt; SL</span></div>
-            <div class="leg-row"><span class="leg-dot ld-r"></span><span>SELL: SL &gt; Entry &gt; TP</span></div>
-          </div>
-
-        </div>
-      </div>
     </div>
 
-    <!-- TABLE -->
-    <div class="card card-table">
-      <div class="card-hdr tbl-hdr">
-        <div class="card-title-row">
-          <span class="card-dot dot-blue"></span>
-          <h2>ประวัติการเทรด</h2>
-        </div>
-        <div class="tbl-controls">
-          <input type="text" id="searchInput" class="fi fi-sm" placeholder="🔍 ค้นหา..." oninput="renderTable()"/>
-          <select id="filterResult" class="fi fi-sm fi-sel" onchange="renderTable()">
-            <option value="">ทั้งหมด</option>
-            <option value="WIN">WIN</option>
-            <option value="LOSS">LOSS</option>
-            <option value="BE">BE</option>
-            <option value="BUY">BUY</option>
-            <option value="SELL">SELL</option>
-          </select>
-        </div>
-      </div>
-      <div class="tbl-scroll">
-        <table class="tbl">
-          <thead>
-            <tr>
-              <th onclick="sortTable('date')"># วันที่ <i id="sort-date">↕</i></th>
-              <th>ทิศทาง</th>
-              <th onclick="sortTable('entry')">Entry <i id="sort-entry">↕</i></th>
-              <th>TP / SL</th>
-              <th onclick="sortTable('exit')">Exit <i id="sort-exit">↕</i></th>
-              <th onclick="sortTable('points')">จุด <i id="sort-points">↕</i></th>
-              <th>Units</th>
-              <th>ผล</th>
-              <th>โน้ต</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody id="tradeTableBody">
-            <tr><td colspan="10"><div class="empty-st"><div class="em-ico">Au</div><p>ยังไม่มีข้อมูล</p><p class="em-sub">บันทึกการเทรดแรกด้านบน</p></div></td></tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-
-  </div>
-</main>
-
-<div class="toast" id="toast"></div>
-<script src="app.js"></script>
+    <script src="app.js"></script>
 </body>
 </html>
