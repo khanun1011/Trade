@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trading Journal - สถิติการเทรด</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <div class="container">
+        <h1>📊 Trading Journal Dashboard</h1>
+        
+        <div class="dashboard">
+            <div class="card">
+                <h3>Win Rate</h3>
+                <p id="win-rate">0%</p>
+            </div>
+            <div class="card win">
+                <h3>Win</h3>
+                <p id="total-win">0</p>
+            </div>
+            <div class="card loss">
+                <h3>Loss</h3>
+                <p id="total-loss">0</p>
+            </div>
+        </div>
+
+        <div class="form-container">
+            <h2>บันทึกการเทรด</h2>
+            <form id="trade-form">
+                <input type="text" id="pair" placeholder="เช่น BTC/USDT" required>
+                <select id="result" required>
+                    <option value="win">ชนะ (Win)</option>
+                    <option value="loss">แพ้ (Loss)</option>
+                </select>
+                <input type="number" id="pnl" placeholder="กำไร/ขาดทุน ($)" required>
+                <button type="submit">บันทึกข้อมูล</button>
+            </form>
+        </div>
+
+        <div class="history-container">
+            <h2>ประวัติการเทรด</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>วัน-เวลา</th>
+                        <th>สินทรัพย์</th>
+                        <th>ผลลัพธ์</th>
+                        <th>P&L</th>
+                    </tr>
+                </thead>
+                <tbody id="trade-history">
+                    </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
