@@ -1,42 +1,39 @@
-// บันทึกการเชื่อมต่อ Supabase ด้วยลิงก์และ Key ของคุณ
+// ใช้ URL และ Key ของคุณที่ส่งมาเรียบร้อยแล้ว
 const SUPABASE_URL = "https://svqdlgauejvnrpqttzey.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_GIHmu2vW6FJA_o74k9hpjA_dWan3f2u";
 
-// เริ่มต้นใช้งาน Supabase Client
-const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+// เชื่อมต่อระบบ Supabase
+const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-// อ้างอิง DOM Elements จากหน้าเว็บ HTML
+// อ้างอิง HTML Elements
 const tradeForm = document.getElementById('trade-form');
 const tradeHistory = document.getElementById('trade-history');
 const winRateEl = document.getElementById('win-rate');
 const totalWinEl = document.getElementById('total-win');
 const totalLossEl = document.getElementById('total-loss');
 
-// 1. ฟังก์ชันดึงข้อมูลทั้งหมดมาจาก Supabase
+// ฟังก์ชัน: ดึงข้อมูลจากฐานข้อมูล
 async function fetchTrades() {
     try {
-        const { data: trades, error } = await supabase
+        const { data: trades, error } = await supabaseClient
             .from('trades')
             .select('*')
             .order('created_at', { ascending: false });
 
-        // หากดึงข้อมูลไม่สำเร็จ ให้แจ้งเตือนบอกสาเหตุ
         if (error) {
-            console.error('ดึงข้อมูลไม่สำเร็จ:', error.message);
-            alert(`ไม่สามารถดึงข้อมูลได้: ${error.message}\n(ใบ้: เช็กว่าสร้างตารางชื่อ trades หรือยัง?)`);
+            alert(`❌ ดึงข้อมูลไม่สำเร็จ: ${error.message}\n\nกรุณาเช็กว่าคุณได้สร้างตารางชื่อ 'trades' ใน Supabase แล้วหรือยัง?`);
             return;
         }
 
-        // หากดึงได้ปกติ ก็นำไปคำนวณและแสดงผล
         renderDashboard(trades || []);
     } catch (err) {
-        console.error('เกิดข้อผิดพลาดร้ายแรง:', err);
+        console.error('Error:', err);
     }
 }
 
-// 2. ฟังก์ชันคำนวณวินเรต และวาดตารางแสดงผลบนหน้าจอ
+// ฟังก์ชัน: คำนวณสถิติและวาดตารางลงหน้าเว็บ
 function renderDashboard(trades) {
-    tradeHistory.innerHTML = ''; // ล้างข้อมูลเก่าในตารางก่อน
+    tradeHistory.innerHTML = '';
     let wins = 0;
     let losses = 0;
 
@@ -44,54 +41,66 @@ function renderDashboard(trades) {
         if (trade.result === 'win') wins++;
         if (trade.result === 'loss') losses++;
 
-        // จัดรูปแบบวันที่ให้เป็นแบบไทยอ่านง่าย
-        const date = new Date(trade.created_at).toLocaleDateString('th-TH');
+        const date = new Date(trade.created_at).toLocaleDateString('th-TH', {
+            year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute:'2-digit'
+        });
         
-        // สร้างแถวตารางใหม่
         const row = document.createElement('tr');
         row.innerHTML = `
             <td>${date}</td>
-            <td>${trade.pair ? trade.pair.toUpperCase() : '-'}</td>
-            <td class="${trade.result === 'win' ? 'text-win' : 'text-loss'}">${trade.result ? trade.result.toUpperCase() : '-'}</td>
+            <td><b>${trade.pair.toUpperCase()}</b></td>
+            <td class="${trade.result === 'win' ? 'text-win' : 'text-loss'}">${trade.result.toUpperCase()}</td>
             <td class="${trade.pnl >= 0 ? 'text-win' : 'text-loss'}">${trade.pnl > 0 ? '+' : ''}${trade.pnl}</td>
-        `;
+            <td><button class="btn-delete" onclick="deleteTrade(${trade.id})">ลบ</button></td>
+                `;
         tradeHistory.appendChild(row);
     });
 
-    // สูตรคำนวณหา Win Rate %
+    // คำนวณ Win Rate
     const totalTrades = wins + losses;
     const winRate = totalTrades > 0 ? ((wins / totalTrades) * 100).toFixed(1) : 0;
 
-    // อัปเดตตัวเลขบน Dashboard การ์ดด้านบน
+    // แสดงผลบนหน้าจอ
     totalWinEl.innerText = wins;
     totalLossEl.innerText = losses;
     winRateEl.innerText = `${winRate}%`;
 }
 
-// 3. ฟังก์ชันดักจับตอนกดปุ่ม "บันทึกข้อมูล"
+// ฟังก์ชัน: กดปุ่มเพื่อบันทึกข้อมูลใหม่
 tradeForm.addEventListener('submit', async (e) => {
-    e.preventDefault(); // ป้องกันหน้าเว็บรีเฟรชตัวเองดื้อๆ
+    e.preventDefault();
 
-    // ดึงค่าจากช่องอินพุตต่างๆ บนหน้าเว็บ
     const pair = document.getElementById('pair').value.trim();
     const result = document.getElementById('result').value;
     const pnl = parseFloat(document.getElementById('pnl').value);
 
-    // ส่งชุดข้อมูลไปเพิ่มในตาราง 'trades' บน Supabase
-    const { error } = await supabase
+    const { error } = await supabaseClient
         .from('trades')
         .insert([{ pair, result, pnl }]);
 
     if (error) {
-        // หากเซฟไม่เข้า จะมีป๊อปอัปเด้งบอกทันทีว่าเกิดจากอะไร เช่น ติด RLS หรือพิมพ์ชื่อคอลัมน์ผิด
-        alert(`❌ บันทึกข้อมูลไม่เข้า!\nสาเหตุจากระบบ: ${error.message}`);
-        console.error('Insert error details:', error);
+        alert(`❌ บันทึกข้อมูลไม่เข้า!\nเหตุผลจากระบบ: ${error.message}\n\n💡 วิธีแก้: ลองไปที่ตาราง trades บนเว็บ Supabase แล้วกดปุ่ม 'Disable RLS' เพื่อเปิดสิทธิ์บันทึกข้อมูลครับ`);
     } else {
-        // หากสำเร็จ ให้เคลียร์ช่องฟอร์มให้ว่าง และดึงข้อมูลใหม่มาโชว์ทันที
         tradeForm.reset();
         fetchTrades();
     }
 });
 
-// สั่งให้หน้าเว็บไปดึงข้อมูลมาแสดงทันทีที่เปิดหน้าเว็บขึ้นมาครั้งแรก
+// ฟังก์ชัน: ลบข้อมูล
+async function deleteTrade(id) {
+    if (confirm('คุณแน่ใจใช่ไหมที่จะลบประวัติการเทรดนี้?')) {
+        const { error } = await supabaseClient
+            .from('trades')
+            .delete()
+            .eq('id', id);
+
+        if (error) {
+            alert(`❌ ลบไม่สำเร็จ: ${error.message}`);
+        } else {
+            fetchTrades();
+        }
+    }
+}
+
+// เริ่มต้นดึงข้อมูลเมื่อเปิดหน้าเว็บครั้งแรก
 fetchTrades();
