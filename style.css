@@ -5,6 +5,7 @@
     --win-color: #a6e3a1;
     --loss-color: #f38ba8;
     --accent-color: #89b4fa;
+    --delete-color: #f38ba8;
 }
 
 body {
@@ -40,7 +41,7 @@ h1, h2 {
 }
 
 .card h3 { margin: 0 0 10px 0; font-size: 1.1rem; color: #a6adc8; }
-.card p { margin: 0; font-size: 2rem; font-weight: bold; }
+.card p { margin: 0; font-size: 2.5rem; font-weight: bold; }
 .card.win p { color: var(--win-color); }
 .card.loss p { color: var(--loss-color); }
 
@@ -93,3 +94,18 @@ th, td {
 th { color: #a6adc8; }
 .text-win { color: var(--win-color); font-weight: bold; }
 .text-loss { color: var(--loss-color); font-weight: bold; }
+
+.btn-delete {
+    background-color: transparent;
+    color: var(--delete-color);
+    border: 1px solid var(--delete-color);
+    padding: 5px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+.btn-delete:hover {
+    background-color: var(--delete-color);
+    color: #11111b;
+}
