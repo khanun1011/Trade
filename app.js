@@ -1,67 +1,72 @@
-// Supabase Configuration 
+// ==========================================
+// CONFIGURATION & INITIALIZATION
+// ==========================================
 const SUPABASE_URL = "https://svqdlgauejvnrpqttzey.supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN2cWRsZ2F1ZWp2bnJwcXR0emV5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEzNTg3NjQsImV4cCI6MjA5NjkzNDc2NH0.glkc753AH_F50WowGozeQtWQxkIO4lf9t1-IIG3NNfE";
-const TABLE        = "gold_trades"; // ตัวแปรชื่อตารางหลักของฐานข้อมูล
+const TABLE        = "gold_trades"; // ตัวแปรตารางหลักเพื่อความมั่นคงของระบบดึงข้อมูล
 
 let supabase;
 
-// เปิดใช้งาน Client และดึงคลาสเชื่อมต่อจาก window object
+// เปิดใช้งาน Client ด้วยการดึง Library ผ่าน window object
 try {
-    const supabaseClient = window.supabase;
-    if (supabaseClient) {
-        supabase = supabaseClient.createClient(SUPABASE_URL, SUPABASE_KEY);
+    if (window.supabase) {
+        supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
     } else {
-        console.error("ผิดพลาด: ไม่สามารถโหลด Supabase SDK จากหน้าเว็บได้");
+        console.error("ไม่สามารถโหลดโครงสร้าง Supabase SDK จากหน้าเว็บได้");
     }
 } catch (err) {
-    console.error("Initialization error:", err);
+    console.error("ระบบเชื่อมต่อทำงานล้มเหลว:", err);
 }
 
-// ระบบเซ็ตล็อกวันที่ปัจจุบันให้กับฟอร์มโดยอัตโนมัติ
+// ล็อกฟอร์มให้วันที่ปัจจุบันแสดงขึ้นมาโดยอัตโนมัติ
 try {
     const today = new Date().toISOString().split('T')[0];
     document.getElementById('trade_date').value = today;
 } catch (e) {
-    console.error("Error setting auto date:", e);
+    console.error("การดึงวันปัจจุบันอัตโนมัติเกิดข้อผิดพลาด:", e);
 }
 
-// โหลดประวัติทันทีเมื่อเปิดหน้าเบราว์เซอร์สำเร็จ
-document.addEventListener('DOMContentLoaded', () => {
-    fetchTrades();
-});
+// เริ่มต้นระบบดึงข้อมูลเมื่อเปิดเบราว์เซอร์
+document.addEventListener('DOMContentLoaded', fetchTrades);
 
-// ดึงข้อมูลเรียลไทม์จากตารางและนำส่งเข้าสู่อาร์เรย์วิเคราะห์
+// ==========================================
+// CORE FUNCTIONS (ดึง / แสดงผล / คำนวณ)
+// ==========================================
+
+// ฟังก์ชันหลักดึงประวัติการเทรดทั้งหมดจากหลังบ้าน
 async function fetchTrades() {
     const listContainer = document.getElementById('trade-list');
     try {
         if (!supabase) {
-            listContainer.innerHTML = `<tr><td colspan="5" class="px-6 py-10 text-center text-red-400">ตัวเชื่อมต่อฐานข้อมูลว่างเปล่า (ตรวจสอบคลาสเชื่อมโยง)</td></tr>`;
+            listContainer.innerHTML = `<tr><td colspan="5" class="px-6 py-10 text-center text-red-400">ระบบเชื่อมต่อฐานข้อมูลล้มเหลว (ตรวจสอบสคริปต์หน้า HTML)</td></tr>`;
             return;
         }
 
-        // เรียกฐานข้อมูลโดยใช้ตัวแปร TABLE ที่ประกาศไว้ด้านบนอย่างสมบูรณ์
+        // ดึงข้อมูลผ่านตัวแปร TABLE ที่กำหนดไว้ด้านบนสุด
         const { data, error } = await supabase
-            .from(TABLE) 
+            .from(TABLE)
             .select('*')
             .order('trade_date', { ascending: false })
             .order('id', { ascending: false });
 
         if (error) throw error;
+
         renderTrades(data);
         calculateStats(data);
+
     } catch (error) {
-        console.error("Error fetching data:", error);
-        listContainer.innerHTML = `<tr><td colspan="5" class="px-6 py-10 text-center text-red-400">เกิดข้อผิดพลาด: ${error.message || 'ไม่สามารถดึงข้อมูลได้'}</td></tr>`;
+        console.error("Error fetching database:", error);
+        listContainer.innerHTML = `<tr><td colspan="5" class="px-6 py-10 text-center text-red-400">เกิดข้อผิดพลาด: ${error.message || 'ไม่สามารถติดต่อฐานข้อมูลได้'}</td></tr>`;
     }
 }
 
-// ฟังก์ชันเรนเดอร์ข้อมูลลงตาราง HTML
+// ฟังก์ชันสร้างและวาดแถวตารางรายชื่อข้อมูลออเดอร์
 function renderTrades(trades) {
     const listContainer = document.getElementById('trade-list');
     document.getElementById('trade-count').innerText = `${trades.length} ออเดอร์`;
 
     if (!trades || trades.length === 0) {
-        listContainer.innerHTML = `<tr><td colspan="5" class="px-6 py-10 text-center text-gray-500">ยังไม่มีข้อมูลบันทึกในประวัติการเทรดของคุณ</td></tr>`;
+        listContainer.innerHTML = `<tr><td colspan="5" class="px-6 py-10 text-center text-gray-500">ไม่มีข้อมูลการเทรดในระบบประวัติของคุณ</td></tr>`;
         return;
     }
 
@@ -96,7 +101,7 @@ function renderTrades(trades) {
     listContainer.innerHTML = html;
 }
 
-// ประมวลผลคิดคำนวณแดชบอร์ดสรุปภาพรวมสถิติ
+// ฟังก์ชันวิเคราะห์ประมวลผลแดชบอร์ดสถิติภาพรวม
 function calculateStats(trades) {
     const total = trades.length;
     if (total === 0) {
@@ -117,7 +122,7 @@ function calculateStats(trades) {
     updateStatDOM(winRate, total, totalWins, totalLosses, totalProfitPoints, totalLossPoints);
 }
 
-// ดันตัวเลขอัปเดตลงโครงสร้างแสดงผลหน้าเว็บ
+// อัปเดตข้อมูลตัวเลขลงอินเทอร์เฟซหน้าเว็บจริง
 function updateStatDOM(winRate, total, wins, losses, profitPoints, lossPoints) {
     if(document.getElementById('stat-winrate')) document.getElementById('stat-winrate').innerText = `${winRate}%`;
     if(document.getElementById('stat-winrate-bar')) document.getElementById('stat-winrate-bar').style.width = `${winRate}%`;
@@ -128,7 +133,11 @@ function updateStatDOM(winRate, total, wins, losses, profitPoints, lossPoints) {
     if(document.getElementById('stat-loss-points')) document.getElementById('stat-loss-points').innerText = `-${Math.round(lossPoints)}`;
 }
 
-// ตรวจจับพฤติกรรมฟอร์มส่งออกข้อมูลเพื่อบันทึกและคำนวณจุดอัตโนมัติ
+// ==========================================
+// EVENT LISTENERS (การกดยืนยันบันทึก / ลบข้อมูล)
+// ==========================================
+
+// ตรวจจับเหตุการณ์ปุ่มกดยืนยันการบันทึกออเดอร์ใหม่
 document.getElementById('trade-form').addEventListener('submit', async (e) => {
     e.preventDefault();
 
@@ -139,28 +148,27 @@ document.getElementById('trade-form').addEventListener('submit', async (e) => {
     const result_status = document.querySelector('input[name="result_status"]:checked').value;
 
     if (sl_price === tp_price || entry_price === sl_price) {
-        alert("ราคาที่คุณกรอกมีค่าซ้ำกัน กรุณาตรวจสอบทิศทางของราคาใหม่อีกครั้งครับ");
+        alert("ราคาที่คุณระบุมีค่าที่ซ้ำกัน กรุณาตรวจสอบทิศทางโครงสร้างราคาใหม่อีกครั้งครับ");
         return;
     }
 
-    // 1. ตรรกะแยกแยะอัตโนมัติ: เป้ากำไร (TP) ค้ำอยู่เหนือโซนตัดขาดทุน (SL) แสดงว่าเป็นฝั่งขาขึ้น BUY
+    // ฟังก์ชันคำนวณอัตโนมัติ: ถ้าเป้าทำกำไร (TP) สูงกว่าจุดตัดขาดทุน (SL) บ่งชี้ว่าเป็นขาขึ้น BUY
     const type = tp_price > sl_price ? 'BUY' : 'SELL';
 
-    // 2. คำนวณหาระยะทางจุดวิ่งสะสม (Points) ตามผลลัพธ์ที่คุณเลือกกดจริง
+    // ฟังก์ชันคำนวณระยะทางจุดวิ่ง (Points) ตามผลลัพธ์ที่ระบุ
     let points_result = 0;
     if (result_status === 'WIN') {
-        // หากออเดอร์ชนะ คิดจุดจากการเคลื่อนที่ของ ราคาเข้า -> ไปหาจุดทำกำไร TP
+        // ชนะ: ระยะจาก ราคาเข้าวิ่งไปถึงจุดปิดกำไร TP
         points_result = Math.abs(tp_price - entry_price) * 100;
     } else {
-        // หากออเดอร์แพ้ คิดจุดลากจากระยะห่าง ราคาเข้า -> ไปโดนคัดขาดทุน SL
+        // แพ้: ระยะลากจาก ราคาเข้าโดนลากย้อนศรไปถึงจุดคัดตัดขาดทุน SL
         points_result = Math.abs(entry_price - sl_price) * 100;
     }
     points_result = Math.round(points_result);
 
     try {
-        // อ้างอิงและบันทึกข้อมูลเข้าตารางหลักตามตัวแปร TABLE
         const { error } = await supabase
-            .from(TABLE) 
+            .from(TABLE)
             .insert([
                 { 
                     trade_date, 
@@ -175,7 +183,43 @@ document.getElementById('trade-form').addEventListener('submit', async (e) => {
 
         if (error) throw error;
 
-        // ล้างช่องข้อมูลตัวเลขเพื่อให้สะดวกในการกดกรอกรายการชุดใหม่
+        // ล้างช่องกรอกตัวเลขราคากลับเป็นกล่องว่าง
         document.getElementById('entry_price').value = '';
         document.getElementById('sl_price').value = '';
         document.getElementById('tp_price').value = '';
+        
+        fetchTrades(); // รีโหลดอัปเดตตารางหน้ารายการใหม่ทันที
+
+    } catch (error) {
+        console.error("Error saving data:", error);
+        alert("ไม่สามารถอัปเดตบันทึกข้อมูลเข้าฐานระบบได้: " + error.message);
+    }
+});
+
+// ฟังก์ชันลบประวัติออเดอร์รายแถว
+async function deleteTrade(id) {
+    if (!confirm('ยืนยันความต้องการจะลบประวัติออเดอร์รายการนี้อย่างถาวร?')) return;
+
+    try {
+        const { error } = await supabase
+            .from(TABLE)
+            .delete()
+            .eq('id', id);
+
+        if (error) throw error;
+        fetchTrades();
+    } catch (error) {
+        console.error("Error deleting item:", error);
+        alert("ลบข้อมูลออกจากระบบฐานข้อมูลไม่สำเร็จ");
+    }
+}
+
+// ตัวจัดรูปแบบฟอร์แมตวันที่แบบไทย
+function formatDate(dateString) {
+    try {
+        const options = { day: 'numeric', month: 'short', year: 'numeric' };
+        return new Date(dateString).toLocaleDateString('th-TH', options);
+    } catch(e) { 
+        return dateString; 
+    }
+}
