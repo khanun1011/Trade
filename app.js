@@ -1,45 +1,47 @@
-// Supabase Configuration
+// Supabase Configuration 
 const SUPABASE_URL = "https://svqdlgauejvnrpqttzey.supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN2cWRsZ2F1ZWp2bnJwcXR0emV5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEzNTg3NjQsImV4cCI6MjA5NjkzNDc2NH0.glkc753AH_F50WowGozeQtWQxkIO4lf9t1-IIG3NNfE";
+const TABLE        = "gold_trades"; // ตัวแปรชื่อตารางหลักของฐานข้อมูล
 
 let supabase;
 
-// เปิดใช้งาน Client ปลอดภัย ตรวจสอบออปชันคลาสจาก Window
+// เปิดใช้งาน Client และดึงคลาสเชื่อมต่อจาก window object
 try {
     const supabaseClient = window.supabase;
     if (supabaseClient) {
         supabase = supabaseClient.createClient(SUPABASE_URL, SUPABASE_KEY);
     } else {
-        console.error("ไม่สามารถเรียกใช้คลาส Supabase จาก CDN ได้");
+        console.error("ผิดพลาด: ไม่สามารถโหลด Supabase SDK จากหน้าเว็บได้");
     }
 } catch (err) {
-    console.error("โครงสร้างตั้งค่าผิดพลาด:", err);
+    console.error("Initialization error:", err);
 }
 
-// ล็อกเป้าหมายวันที่ปัจจุบันให้แสดงผลในช่องทันที
+// ระบบเซ็ตล็อกวันที่ปัจจุบันให้กับฟอร์มโดยอัตโนมัติ
 try {
     const today = new Date().toISOString().split('T')[0];
     document.getElementById('trade_date').value = today;
 } catch (e) {
-    console.error("เซ็ตวันที่อัตโนมัติไม่สำเร็จ:", e);
+    console.error("Error setting auto date:", e);
 }
 
-// รันระบบดึงข้อมูลออเดอร์เมื่อเบราว์เซอร์เปิดขึ้นมา
+// โหลดประวัติทันทีเมื่อเปิดหน้าเบราว์เซอร์สำเร็จ
 document.addEventListener('DOMContentLoaded', () => {
     fetchTrades();
 });
 
-// ดึงข้อมูลเรียลไทม์จากตาราง
+// ดึงข้อมูลเรียลไทม์จากตารางและนำส่งเข้าสู่อาร์เรย์วิเคราะห์
 async function fetchTrades() {
     const listContainer = document.getElementById('trade-list');
     try {
         if (!supabase) {
-            listContainer.innerHTML = `<tr><td colspan="5" class="px-6 py-10 text-center text-red-400">ตัวเชื่อมต่อฐานข้อมูลว่างเปล่า (ตรวจสอบสคริปต์ใน HTML)</td></tr>`;
+            listContainer.innerHTML = `<tr><td colspan="5" class="px-6 py-10 text-center text-red-400">ตัวเชื่อมต่อฐานข้อมูลว่างเปล่า (ตรวจสอบคลาสเชื่อมโยง)</td></tr>`;
             return;
         }
 
+        // เรียกฐานข้อมูลโดยใช้ตัวแปร TABLE ที่ประกาศไว้ด้านบนอย่างสมบูรณ์
         const { data, error } = await supabase
-            .from('gold_trades')
+            .from(TABLE) 
             .select('*')
             .order('trade_date', { ascending: false })
             .order('id', { ascending: false });
@@ -49,17 +51,17 @@ async function fetchTrades() {
         calculateStats(data);
     } catch (error) {
         console.error("Error fetching data:", error);
-        listContainer.innerHTML = `<tr><td colspan="5" class="px-6 py-10 text-center text-red-400">เกิดข้อผิดพลาดคัดกรอง: ${error.message || 'ไม่สามารถตอบรับฐานข้อมูล'}</td></tr>`;
+        listContainer.innerHTML = `<tr><td colspan="5" class="px-6 py-10 text-center text-red-400">เกิดข้อผิดพลาด: ${error.message || 'ไม่สามารถดึงข้อมูลได้'}</td></tr>`;
     }
 }
 
-// วาดตารางประวัติบนหน้าเว็บ
+// ฟังก์ชันเรนเดอร์ข้อมูลลงตาราง HTML
 function renderTrades(trades) {
     const listContainer = document.getElementById('trade-list');
     document.getElementById('trade-count').innerText = `${trades.length} ออเดอร์`;
 
     if (!trades || trades.length === 0) {
-        listContainer.innerHTML = `<tr><td colspan="5" class="px-6 py-10 text-center text-gray-500">ไม่มีข้อมูลการเทรดในประวัติของคุณ</td></tr>`;
+        listContainer.innerHTML = `<tr><td colspan="5" class="px-6 py-10 text-center text-gray-500">ยังไม่มีข้อมูลบันทึกในประวัติการเทรดของคุณ</td></tr>`;
         return;
     }
 
@@ -94,7 +96,7 @@ function renderTrades(trades) {
     listContainer.innerHTML = html;
 }
 
-// ประมวลผลหน้าต่างภาพรวม แดชบอร์ดคาร์ด
+// ประมวลผลคิดคำนวณแดชบอร์ดสรุปภาพรวมสถิติ
 function calculateStats(trades) {
     const total = trades.length;
     if (total === 0) {
@@ -115,6 +117,7 @@ function calculateStats(trades) {
     updateStatDOM(winRate, total, totalWins, totalLosses, totalProfitPoints, totalLossPoints);
 }
 
+// ดันตัวเลขอัปเดตลงโครงสร้างแสดงผลหน้าเว็บ
 function updateStatDOM(winRate, total, wins, losses, profitPoints, lossPoints) {
     if(document.getElementById('stat-winrate')) document.getElementById('stat-winrate').innerText = `${winRate}%`;
     if(document.getElementById('stat-winrate-bar')) document.getElementById('stat-winrate-bar').style.width = `${winRate}%`;
@@ -125,7 +128,7 @@ function updateStatDOM(winRate, total, wins, losses, profitPoints, lossPoints) {
     if(document.getElementById('stat-loss-points')) document.getElementById('stat-loss-points').innerText = `-${Math.round(lossPoints)}`;
 }
 
-// ยิงฟอร์มบันทึกออเดอร์ใหม่พร้อมคำนวณจุดอัตโนมัติ
+// ตรวจจับพฤติกรรมฟอร์มส่งออกข้อมูลเพื่อบันทึกและคำนวณจุดอัตโนมัติ
 document.getElementById('trade-form').addEventListener('submit', async (e) => {
     e.preventDefault();
 
@@ -136,27 +139,28 @@ document.getElementById('trade-form').addEventListener('submit', async (e) => {
     const result_status = document.querySelector('input[name="result_status"]:checked').value;
 
     if (sl_price === tp_price || entry_price === sl_price) {
-        alert("ราคาที่กรอกมีค่าเท่ากัน กรุณาตรวจสอบทิศทางออเดอร์ใหม่อีกครั้งครับ");
+        alert("ราคาที่คุณกรอกมีค่าซ้ำกัน กรุณาตรวจสอบทิศทางของราคาใหม่อีกครั้งครับ");
         return;
     }
 
-    // 1. ระบุทิศทางอัตโนมัติ: ถ้าเป้าทำกำไร (TP) ค้ำหัวสูงกว่า Stop Loss แปลว่าเป็นฝั่ง BUY
+    // 1. ตรรกะแยกแยะอัตโนมัติ: เป้ากำไร (TP) ค้ำอยู่เหนือโซนตัดขาดทุน (SL) แสดงว่าเป็นฝั่งขาขึ้น BUY
     const type = tp_price > sl_price ? 'BUY' : 'SELL';
 
-    // 2. คำนวณหาระยะจุด (Points) ที่วิ่งได้จริงโดยขึ้นกับเงื่อนไข แพ้/ชนะ
+    // 2. คำนวณหาระยะทางจุดวิ่งสะสม (Points) ตามผลลัพธ์ที่คุณเลือกกดจริง
     let points_result = 0;
     if (result_status === 'WIN') {
-        // ถ้าชนะ คิดจุดบวกจากระยะห่าง ราคาเข้า -> ไปหา TP
+        // หากออเดอร์ชนะ คิดจุดจากการเคลื่อนที่ของ ราคาเข้า -> ไปหาจุดทำกำไร TP
         points_result = Math.abs(tp_price - entry_price) * 100;
     } else {
-        // ถ้าแพ้ คิดจุดลบจากระยะห่าง ราคาเข้า -> โดนลากไปชน SL
+        // หากออเดอร์แพ้ คิดจุดลากจากระยะห่าง ราคาเข้า -> ไปโดนคัดขาดทุน SL
         points_result = Math.abs(entry_price - sl_price) * 100;
     }
     points_result = Math.round(points_result);
 
     try {
+        // อ้างอิงและบันทึกข้อมูลเข้าตารางหลักตามตัวแปร TABLE
         const { error } = await supabase
-            .from('gold_trades')
+            .from(TABLE) 
             .insert([
                 { 
                     trade_date, 
@@ -171,42 +175,7 @@ document.getElementById('trade-form').addEventListener('submit', async (e) => {
 
         if (error) throw error;
 
-        // ล้างฟอร์มราคากลับเป็นค่าว่างเพื่อพิมพ์ออเดอร์ถัดไปง่ายๆ
+        // ล้างช่องข้อมูลตัวเลขเพื่อให้สะดวกในการกดกรอกรายการชุดใหม่
         document.getElementById('entry_price').value = '';
         document.getElementById('sl_price').value = '';
         document.getElementById('tp_price').value = '';
-        fetchTrades();
-
-    } catch (error) {
-        console.error("Error inserting data:", error);
-        alert("ไม่สามารถเพิ่มข้อมูลลงเซิร์ฟเวอร์ได้: " + error.message);
-    }
-});
-
-// ลบรายการออเดอร์
-async function deleteTrade(id) {
-    if (!confirm('ยืนยันลบออเดอร์นี้ออกจากบันทึกถาวร?')) return;
-
-    try {
-        const { error } = await supabase
-            .from('gold_trades')
-            .delete()
-            .eq('id', id);
-
-        if (error) throw error;
-        fetchTrades();
-    } catch (error) {
-        console.error("Error deleting data:", error);
-        alert("ลบข้อมูลไม่สำเร็จ");
-    }
-}
-
-// ตัวจัดฟอร์แมตวันภาษาไทย
-function formatDate(dateString) {
-    try {
-        const options = { day: 'numeric', month: 'short', year: 'numeric' };
-        return new Date(dateString).toLocaleDateString('th-TH', options);
-    } catch(e) {
-        return dateString;
-    }
-}
